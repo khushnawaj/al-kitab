@@ -147,6 +147,35 @@ export const Calendar: React.FC = () => {
   const nextMonthDaysCount = totalCells - (prevMonthDays.length + currentMonthDays.length);
   const nextMonthDays = Array.from({ length: nextMonthDaysCount }, (_, i) => i + 1);
 
+  // Compute max activity for the current month (for intensity scaling)
+  const maxActivityInMonth = Math.max(
+    1,
+    ...currentMonthDays.map(d => {
+      const fm = String(month + 1).padStart(2, '0');
+      const fd = String(d).padStart(2, '0');
+      return activitiesByDate[`${year}-${fm}-${fd}`]?.total || 0;
+    })
+  );
+
+  // Returns 0-4 intensity level based on activity vs max
+  const getIntensityLevel = (total: number): number => {
+    if (total === 0) return 0;
+    const ratio = total / maxActivityInMonth;
+    if (ratio <= 0.25) return 1;
+    if (ratio <= 0.5) return 2;
+    if (ratio <= 0.75) return 3;
+    return 4;
+  };
+
+  // Intensity level → CSS classes (background + text + border)
+  const intensityClasses: Record<number, string> = {
+    0: 'bg-white/50 dark:bg-slate-900/40 border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800',
+    1: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200/60 dark:border-emerald-900/60 text-slate-700 dark:text-slate-200 hover:border-emerald-400',
+    2: 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300/70 dark:border-emerald-800/70 text-slate-700 dark:text-slate-200 hover:border-emerald-500',
+    3: 'bg-emerald-200 dark:bg-emerald-800/50 border-emerald-400/80 dark:border-emerald-700/80 text-slate-800 dark:text-slate-100 hover:border-emerald-500',
+    4: 'bg-emerald-400/70 dark:bg-emerald-700/60 border-emerald-500 dark:border-emerald-600 text-emerald-900 dark:text-emerald-100 hover:border-emerald-600',
+  };
+
   const handlePrevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
   };
@@ -310,19 +339,19 @@ export const Calendar: React.FC = () => {
               const dayDetails = getDayDetails(day);
               const selected = isSelected(day);
               const isToday = isTodayDay(day);
+              const intensity = getIntensityLevel(dayDetails?.total || 0);
 
               return (
                 <div
                   key={`curr-${day}`}
                   onClick={() => handleDateClick(day)}
+                  title={dayDetails ? `${dayDetails.total} total recitations` : undefined}
                   className={`h-14 sm:h-16 flex flex-col items-center justify-between p-1 text-xs font-normal rounded-xl cursor-pointer transition-all relative border ${
                     selected 
                       ? 'bg-amber-800 text-white border-amber-800 shadow-xs' 
                       : isToday
                       ? 'bg-amber-50/70 dark:bg-amber-900/20 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200'
-                      : dayDetails
-                      ? 'bg-emerald-50/40 dark:bg-slate-900/40 border-emerald-200/60 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:border-amber-500'
-                      : 'bg-white/50 dark:bg-slate-900/40 border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      : intensityClasses[intensity]
                   }`}
                 >
                   <span className={`text-3xs font-normal ${selected ? 'text-white' : ''}`}>
@@ -331,8 +360,12 @@ export const Calendar: React.FC = () => {
 
                   {/* Activity Badge */}
                   {dayDetails && (
-                    <span className={`text-[9px] font-normal px-1 py-0.2 rounded-full truncate max-w-full ${
-                      selected ? 'bg-amber-700 text-white' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'
+                    <span className={`text-[9px] font-normal px-1 rounded-full truncate max-w-full ${
+                      selected 
+                        ? 'bg-amber-700 text-white' 
+                        : intensity >= 3
+                        ? 'bg-emerald-600/80 text-white'
+                        : 'bg-emerald-200 dark:bg-emerald-800/60 text-emerald-900 dark:text-emerald-200'
                     }`}>
                       +{dayDetails.total}
                     </span>
@@ -350,6 +383,31 @@ export const Calendar: React.FC = () => {
                 {day}
               </div>
             ))}
+          </div>
+
+          {/* Color Intensity Legend */}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-3xs text-slate-400 font-normal uppercase tracking-wider">Activity</span>
+            <div className="flex items-center gap-1">
+              <span className="text-3xs text-slate-400 font-normal mr-1">Less</span>
+              {[0, 1, 2, 3, 4].map(level => (
+                <div
+                  key={level}
+                  className={`w-4 h-4 rounded-md border ${
+                    level === 0
+                      ? 'bg-white/50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700'
+                      : level === 1
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900'
+                      : level === 2
+                      ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-800'
+                      : level === 3
+                      ? 'bg-emerald-200 dark:bg-emerald-800/50 border-emerald-400 dark:border-emerald-700'
+                      : 'bg-emerald-400/70 dark:bg-emerald-700/60 border-emerald-500 dark:border-emerald-600'
+                  }`}
+                />
+              ))}
+              <span className="text-3xs text-slate-400 font-normal ml-1">More</span>
+            </div>
           </div>
         </div>
 

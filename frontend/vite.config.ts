@@ -16,28 +16,37 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'Al-Kitab Quran Recitation Tracker',
+        name: 'Al-Kitab — Quran & Dhikr Tracker',
         short_name: 'Al-Kitab',
-        description: 'Lightweight Quran recitation record tracker for daily goals',
-        theme_color: '#10b981',
+        description: 'Track your daily Quran recitation, dhikr and Islamic practices. Your personal spiritual journal.',
+        theme_color: '#92400e',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        scope: '/',
+        lang: 'en',
+        categories: ['lifestyle', 'education', 'utilities'],
         icons: [
           {
             src: '/pwa-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
             src: '/pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
@@ -72,3 +81,4 @@ export default defineConfig({
     })
   ]
 });
+
