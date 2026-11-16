@@ -53,7 +53,7 @@ export const Register: React.FC = () => {
         theme,
       });
       navigate('/', { replace: true });
-    } catch (err) {
+    } catch {
       // toast is already handled in AuthContext
     }
   };

@@ -314,7 +314,7 @@ export const Settings: React.FC = () => {
       link.download = `al_kitab_backup_${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       toast.success('Backup exported as JSON');
-    } catch (err) {
+    } catch {
       toast.error('Failed to export JSON backup');
     }
   };
@@ -335,7 +335,7 @@ export const Settings: React.FC = () => {
       link.download = `al_kitab_history_${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('History exported as CSV');
-    } catch (err) {
+    } catch {
       toast.error('Failed to export CSV');
     }
   };
@@ -398,7 +398,7 @@ export const Settings: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['statistics'] });
         queryClient.invalidateQueries({ queryKey: ['counters'] });
         toast.success('Backup restored successfully!');
-      } catch (err) {
+      } catch {
         toast.error('Failed to import backup. Please check file format.');
       }
     };

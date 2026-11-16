@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       window.removeEventListener('auth-logout', handleForceLogout);
     };
-  }, []);
+  }, [setLanguage, setTheme]);
 
   const handleAuthSuccess = (data: AuthResponse) => {
     setUser(data.user);

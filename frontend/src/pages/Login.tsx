@@ -41,7 +41,7 @@ export const Login: React.FC = () => {
     try {
       await login(values);
       navigate('/', { replace: true });
-    } catch (err) {
+    } catch {
       // toast is already handled in AuthContext
     }
   };

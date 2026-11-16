@@ -3,11 +3,38 @@ import { userRepository } from '../repositories/UserRepository.js';
 import { refreshTokenRepository } from '../repositories/RefreshTokenRepository.js';
 import { goalRepository } from '../repositories/GoalRepository.js';
 import { recitationRepository } from '../repositories/RecitationRepository.js';
+import { counterRepository } from '../repositories/CounterRepository.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { IUser } from '../models/User.js';
 
+export interface UserResponse {
+  id: string;
+  name: string;
+  email: string;
+  theme: 'light' | 'dark' | 'system';
+  language: 'en' | 'ur_roman' | 'ur';
+  role: 'user' | 'admin';
+  createdAt?: Date;
+}
+
+export const formatUserResponse = (user: IUser | any): UserResponse => ({
+  id: user._id?.toString() || user.id?.toString(),
+  name: user.name,
+  email: user.email,
+  theme: user.theme || 'system',
+  language: user.language || 'en',
+  role: user.role || 'user',
+  ...(user.createdAt ? { createdAt: user.createdAt } : {}),
+});
+
 export class AuthService {
-  async register(name: string, email: string, password: string, language?: 'en' | 'ur_roman' | 'ur', theme?: 'light' | 'dark' | 'system') {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    language?: 'en' | 'ur_roman' | 'ur',
+    theme?: 'light' | 'dark' | 'system'
+  ) {
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
       throw { status: 400, message: 'Email address already registered' };
@@ -41,9 +68,10 @@ export class AuthService {
     await refreshTokenRepository.create(refreshToken, user._id.toString(), expiresAt);
 
     return {
-      user: { id: user._id, name: user.name, email: user.email, theme: user.theme || 'system', language: user.language || 'en', role: user.role || 'user' },
+      user: formatUserResponse(user),
       accessToken,
       refreshToken,
+      expiryDays: 7,
     };
   }
 
@@ -58,20 +86,19 @@ export class AuthService {
       throw { status: 401, message: 'Invalid email or password' };
     }
 
-    const accessToken = generateAccessToken(user._id.toString());
-    const refreshToken = generateRefreshToken(user._id.toString());
-
-    // Save refresh token to DB (7 days expiry, or more if remember me is set, let's keep 7 or 30 days)
     const expiryDays = rememberMe ? 30 : 7;
+    const accessToken = generateAccessToken(user._id.toString());
+    const refreshToken = generateRefreshToken(user._id.toString(), expiryDays);
+
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expiryDays);
-    
     await refreshTokenRepository.create(refreshToken, user._id.toString(), expiresAt);
 
     return {
-      user: { id: user._id, name: user.name, email: user.email, theme: user.theme || 'system', language: user.language || 'en', role: user.role || 'user' },
+      user: formatUserResponse(user),
       accessToken,
       refreshToken,
+      expiryDays,
     };
   }
 
@@ -89,36 +116,52 @@ export class AuthService {
 
     try {
       const decoded = verifyRefreshToken(token);
+      // Refresh token rotation: delete old token, generate new pair
+      await refreshTokenRepository.deleteByToken(token);
+
       const newAccessToken = generateAccessToken(decoded.userId);
-      // Optional: rotate refresh token
-      return { accessToken: newAccessToken };
-    } catch (err) {
+      const newRefreshToken = generateRefreshToken(decoded.userId);
+      
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      await refreshTokenRepository.create(newRefreshToken, decoded.userId, expiresAt);
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiryDays: 7,
+      };
+    } catch {
       await refreshTokenRepository.deleteByToken(token);
       throw { status: 401, message: 'Invalid refresh token signature' };
     }
   }
 
-  async logout(token: string) {
-    await refreshTokenRepository.deleteByToken(token);
+  async logout(token?: string, userId?: string) {
+    if (token) {
+      await refreshTokenRepository.deleteByToken(token);
+    }
+    if (userId) {
+      // Invalidate active refresh tokens for the user
+      await refreshTokenRepository.deleteAllByUserId(userId);
+    }
   }
 
-  async getProfile(userId: string) {
+  async getProfile(userId: string): Promise<UserResponse> {
     const user = await userRepository.findById(userId);
     if (!user) {
       throw { status: 404, message: 'User not found' };
     }
-    return { 
-      id: user._id, 
-      name: user.name, 
-      email: user.email, 
-      theme: user.theme || 'system', 
-      language: user.language || 'en', 
-      role: user.role || 'user',
-      createdAt: user.createdAt 
-    };
+    return formatUserResponse(user);
   }
 
-  async updateProfile(userId: string, name?: string, email?: string, theme?: 'light' | 'dark' | 'system', language?: 'en' | 'ur_roman' | 'ur') {
+  async updateProfile(
+    userId: string,
+    name?: string,
+    email?: string,
+    theme?: 'light' | 'dark' | 'system',
+    language?: 'en' | 'ur_roman' | 'ur'
+  ): Promise<UserResponse> {
     const updateData: Partial<IUser> = {};
     if (name) updateData.name = name;
     if (email) {
@@ -136,17 +179,10 @@ export class AuthService {
       throw { status: 404, message: 'User not found' };
     }
 
-    return { 
-      id: updatedUser._id, 
-      name: updatedUser.name, 
-      email: updatedUser.email, 
-      theme: updatedUser.theme || 'system', 
-      language: updatedUser.language || 'en',
-      role: updatedUser.role || 'user'
-    };
+    return formatUserResponse(updatedUser);
   }
 
-  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
     const user = await userRepository.findById(userId);
     if (!user) {
       throw { status: 404, message: 'User not found' };
@@ -161,6 +197,8 @@ export class AuthService {
     const passwordHash = await bcryptjs.hash(newPassword, salt);
 
     await userRepository.update(userId, { passwordHash });
+    // Invalidate refresh tokens on password change for security
+    await refreshTokenRepository.deleteAllByUserId(userId);
   }
 
   async verifyPassword(userId: string, password: string): Promise<boolean> {
@@ -175,12 +213,16 @@ export class AuthService {
     return true;
   }
 
-  async deleteAccount(userId: string) {
-    // Delete goals, refresh tokens, and recitations for the user
-    await goalRepository.deleteByUserId(userId);
-    await refreshTokenRepository.deleteAllByUserId(userId);
-    await recitationRepository.deleteAllByUserId(userId);
+  async deleteAccount(userId: string): Promise<void> {
+    // Clean up all user data across all collections:
+    await Promise.all([
+      goalRepository.deleteByUserId(userId),
+      recitationRepository.deleteAllByUserId(userId),
+      counterRepository.deleteAllByUserId(userId),
+      refreshTokenRepository.deleteAllByUserId(userId),
+    ]);
     await userRepository.delete(userId);
   }
 }
+
 export const authService = new AuthService();

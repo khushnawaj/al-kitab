@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* â”€â”€ Primary: Forest Green â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* ── Primary: Forest Green ────────────────────────────────── */
   --color-primary-50:  #f0faf4;
   --color-primary-100: #d6f5e3;
   --color-primary-200: #adeecb;
@@ -17,7 +17,7 @@
   --color-primary-900: #042e18;
   --color-primary-950: #021a0d;
 
-  /* â”€â”€ Gold / Amber â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* ── Gold / Amber ──────────────────────────────────────────── */
   --color-gold-50:  #fffbeb;
   --color-gold-100: #fef3c7;
   --color-gold-200: #fde68a;
@@ -29,31 +29,61 @@
   --color-gold-800: #78350f;
   --color-gold-900: #451a03;
 
-  /* â”€â”€ Deep Jewel Tones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* ── Deep Jewel Tones ─────────────────────────────────────── */
   --color-jewel-50:  #f5f0ff;
   --color-jewel-100: #ede9fe;
   --color-jewel-200: #ddd6fe;
   --color-jewel-500: #7c3aed;
   --color-jewel-600: #6d28d9;
 
-  /* ── Background / Surface ───────────────────────────── */
-  --color-bg-light:     #ffffff;   /* Notion light background */
-  --color-card-light:   #ffffff;
-  --color-card-dark:    #202020;   /* Notion dark card */
-  --color-surface-dark: #222222;
-
-  /* ── Borders ────────────────────────────────────────── */
-  --color-border-light: rgba(55, 53, 47, 0.16); /* Notion light border */
-  --color-border-dark:  rgba(255, 255, 255, 0.09); /* Notion dark border */
-
-  /* â”€â”€ Fonts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* ── Fonts ────────────────────────────────────────── */
   --font-sans:    -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-display: 'Lyon-Text', Georgia, YuMincho, "Yumincho", serif;
   --font-arabic:  'Amiri', 'Traditional Arabic', serif;
 }
 
-/* â”€â”€ Root & Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-:root { color-scheme: light dark; }
+/* ── Design tokens: Light (default) ──────────────────────── */
+:root {
+  color-scheme: light dark;
+
+  --surface:          #ffffff;
+  --canvas:           #f9f7f2;
+  --line:             rgba(55, 53, 47, 0.12);
+  --ink:              #37352f;
+  --muted:            #8a8075;
+  --brand:            #169b5c;
+  --brand-deep:       #0b5f35;
+
+  --color-bg-light:     #ffffff;
+  --color-bg-dark:      #111816;
+  --color-card-light:   #ffffff;
+  --color-card-dark:    #202020;
+  --color-surface-dark: #222222;
+  --color-border:       rgba(55, 53, 47, 0.14);
+  --color-border-light: rgba(55, 53, 47, 0.16);
+  --color-border-dark:  rgba(255, 255, 255, 0.09);
+}
+
+.dark {
+  --surface:        #1a1a1a;
+  --canvas:         #111816;
+  --line:           rgba(255, 255, 255, 0.09);
+  --ink:            rgba(255, 255, 255, 0.92);
+  --muted:          rgba(255, 255, 255, 0.45);
+  --brand:          #3dca87;
+  --brand-deep:     #169b5c;
+  --color-text-h:   rgba(255, 255, 255, 0.92);
+  --color-text-b:   rgba(255, 255, 255, 0.65);
+  --color-card-light: #202020;
+  --color-border:   rgba(255, 255, 255, 0.09);
+}
+
+/* ── Toast dark mode ─────────────────────────────────────── */
+.dark .toast-adaptive {
+  background: #1e2d26 !important;
+  color: rgba(255,255,255,0.9) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+}
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -61,8 +91,8 @@ body {
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.5;
-  background-color: var(--color-bg-light);
-  color: #37352f; /* Notion main text color */
+  background-color: var(--canvas);
+  color: var(--ink);
   margin: 0;
   padding: 0;
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -73,7 +103,7 @@ body {
 
 body.dark {
   background-color: var(--color-bg-dark);
-  color: rgba(255, 255, 255, 0.9); /* Notion dark text color */
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* Elegant geometric background grid */
@@ -94,6 +124,7 @@ body.dark::before {
     radial-gradient(circle at 1px 1px, rgba(251, 191, 36, 0.06) 1.5px, transparent 0),
     radial-gradient(circle at 12px 12px, rgba(22, 155, 92, 0.03) 1px, transparent 0);
 }
+
 
 /* â”€â”€ Scrollbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

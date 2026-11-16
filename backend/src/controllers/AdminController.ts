@@ -3,49 +3,68 @@ import { User } from '../models/User.js';
 import { Recitation } from '../models/Recitation.js';
 import { Counter } from '../models/Counter.js';
 import { Goal } from '../models/Goal.js';
+import { RefreshToken } from '../models/RefreshToken.js';
 
 export class AdminController {
-  async getAllUsers(req: Request, res: Response) {
+  async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
       const users = await User.find({}, '-passwordHash').sort({ createdAt: -1 }).lean();
-      
-      // Enrich users with basic stats
-      const enrichedUsers = await Promise.all(
-        users.map(async (u) => {
-          const recitations = await Recitation.find({ user: u._id });
-          const totalAyahs = recitations.reduce((sum, r) => sum + r.ayahCount, 0);
-          return {
-            ...u,
-            recitationsCount: recitations.length,
-            totalAyahs
-          };
-        })
-      );
+
+      // Aggregate user recitation stats in a single query instead of N+1 queries
+      const recitationStats = await Recitation.aggregate([
+        {
+          $group: {
+            _id: '$user',
+            recitationsCount: { $sum: 1 },
+            totalAyahs: { $sum: '$ayahCount' },
+          },
+        },
+      ]);
+
+      const statsMap = new Map<string, { recitationsCount: number; totalAyahs: number }>();
+      for (const stat of recitationStats) {
+        statsMap.set(stat._id.toString(), {
+          recitationsCount: stat.recitationsCount || 0,
+          totalAyahs: stat.totalAyahs || 0,
+        });
+      }
+
+      const enrichedUsers = users.map((u) => {
+        const stats = statsMap.get(u._id.toString()) || { recitationsCount: 0, totalAyahs: 0 };
+        return {
+          ...u,
+          recitationsCount: stats.recitationsCount,
+          totalAyahs: stats.totalAyahs,
+        };
+      });
 
       res.status(200).json({
         success: true,
-        data: enrichedUsers
+        data: enrichedUsers,
       });
     } catch (error) {
+      console.error('Failed to retrieve users in AdminController:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to retrieve users'
+        message: 'Failed to retrieve users',
       });
     }
   }
 
-  async updateUserRole(req: Request, res: Response) {
+  async updateUserRole(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { role } = req.body;
 
       if (!['user', 'admin'].includes(role)) {
-        return res.status(400).json({ success: false, message: 'Invalid role' });
+        res.status(400).json({ success: false, message: 'Invalid role. Must be "user" or "admin"' });
+        return;
       }
 
       const updatedUser = await User.findByIdAndUpdate(id, { $set: { role } }, { new: true });
       if (!updatedUser) {
-        return res.status(404).json({ success: false, message: 'User not found' });
+        res.status(404).json({ success: false, message: 'User not found' });
+        return;
       }
 
       res.status(200).json({
@@ -55,38 +74,45 @@ export class AdminController {
           id: updatedUser._id,
           name: updatedUser.name,
           email: updatedUser.email,
-          role: updatedUser.role
-        }
+          role: updatedUser.role,
+        },
       });
     } catch (error) {
-      res.status(505).json({
+      console.error('Failed to update user role:', error);
+      res.status(500).json({
         success: false,
-        message: 'Failed to update user role'
+        message: 'Failed to update user role',
       });
     }
   }
 
-  async deleteUser(req: Request, res: Response) {
+  async deleteUser(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const deletedUser = await User.findByIdAndDelete(id);
-      if (!deletedUser) {
-        return res.status(404).json({ success: false, message: 'User not found' });
+      const user = await User.findById(id);
+      if (!user) {
+        res.status(404).json({ success: false, message: 'User not found' });
+        return;
       }
 
-      // Clean up user data
-      await Recitation.deleteMany({ user: id });
-      await Counter.deleteMany({ user: id });
-      await Goal.deleteMany({ user: id });
+      // Comprehensive cascade cleanup: delete recitations, counters, goals, and refresh tokens
+      await Promise.all([
+        Recitation.deleteMany({ user: id }),
+        Counter.deleteMany({ user: id }),
+        Goal.deleteMany({ user: id }),
+        RefreshToken.deleteMany({ user: id }),
+      ]);
+      await User.findByIdAndDelete(id);
 
       res.status(200).json({
         success: true,
-        message: 'User and all associated data deleted successfully'
+        message: 'User and all associated data deleted successfully',
       });
     } catch (error) {
+      console.error('Failed to delete user:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to delete user'
+        message: 'Failed to delete user and associated data',
       });
     }
   }

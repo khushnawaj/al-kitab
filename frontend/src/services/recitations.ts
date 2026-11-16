@@ -253,8 +253,10 @@ export const recitationApi = {
       // We can format the records for insertion
       const formatted = pending.map(r => ({
         date: r.date,
-        surahNumber: r.surahNumber,
-        type: r.type,
+        surahNumber: r.surahNumber || 0,
+        surahName: r.surahName || 'Custom Recitation',
+        type: r.type || 'custom',
+        ayahCount: r.ayahCount || 1,
         fromAyah: r.fromAyah,
         toAyah: r.toAyah,
         notes: r.notes

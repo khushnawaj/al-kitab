@@ -7,10 +7,14 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Enables sending secure HTTP-only cookies (refresh token)
 });
 
 let isRefreshing = false;
-let failedQueue: any[] = [];
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
 
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
@@ -42,14 +46,19 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Skip refresh token logic if auth request fails
-    if (originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register')) {
+    // Skip refresh token logic if auth endpoints fail
+    if (
+      !originalRequest ||
+      originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/register') ||
+      originalRequest.url?.includes('/auth/refresh')
+    ) {
       return Promise.reject(error);
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise((resolve, reject) => {
+        return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
@@ -62,37 +71,40 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) {
-        isRefreshing = false;
-        // Redirect to login if refresh token is not found
-        window.dispatchEvent(new Event('auth-logout'));
-        return Promise.reject(error);
-      }
+      const storedRefreshToken = localStorage.getItem('refreshToken');
 
       try {
-        const response = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
-        const { accessToken } = response.data.data;
-        
+        // Dual refresh strategy: sends httpOnly cookie automatically and passes body token as fallback
+        const response = await axios.post(
+          `${API_URL}/auth/refresh`,
+          storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
+          { withCredentials: true }
+        );
+
+        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+
         localStorage.setItem('accessToken', accessToken);
-        
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
+
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        
+
         processQueue(null, accessToken);
         isRefreshing = false;
-        
+
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
         isRefreshing = false;
-        
-        // Log out user
+
+        // Invalidate frontend auth session
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         window.dispatchEvent(new Event('auth-logout'));
-        
+
         return Promise.reject(refreshError);
       }
     }

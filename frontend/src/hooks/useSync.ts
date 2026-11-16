@@ -30,7 +30,7 @@ export const useSync = () => {
           
           toast.dismiss(loadingToast);
           toast.success(`Connection restored. Synced all offline data successfully!`);
-        } catch (err) {
+        } catch {
           toast.dismiss(loadingToast);
           toast.error('Sync failed. Will retry later.');
         } finally {

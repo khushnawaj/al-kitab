@@ -45,16 +45,32 @@ function App() {
                 toastOptions={{
                   duration: 4000,
                   style: {
-                    background: 'var(--color-card-light)',
-                    color: 'var(--color-text-h)',
-                    borderRadius: '16px',
-                    border: '1px solid var(--color-border)',
-                    fontSize: '0.875rem',
+                    borderRadius: '14px',
+                    fontSize: '0.8rem',
                     fontWeight: 500,
+                    padding: '10px 14px',
+                    maxWidth: '340px',
                   },
+                  className: 'toast-adaptive',
                   success: {
+                    style: {
+                      background: '#f0fdf4',
+                      color: '#14532d',
+                      border: '1px solid #bbf7d0',
+                    },
                     iconTheme: {
-                      primary: '#10b981',
+                      primary: '#16a34a',
+                      secondary: '#ffffff',
+                    },
+                  },
+                  error: {
+                    style: {
+                      background: '#fef2f2',
+                      color: '#7f1d1d',
+                      border: '1px solid #fecaca',
+                    },
+                    iconTheme: {
+                      primary: '#dc2626',
                       secondary: '#ffffff',
                     },
                   },

@@ -18,9 +18,9 @@ const RecitationSchema: Schema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     date: { type: Date, required: true },
-    surahNumber: { type: Number, required: true },
+    surahNumber: { type: Number, required: false, default: 0 },
     surahName: { type: String, required: true },
-    type: { type: String, enum: ['entire', 'custom'], required: true },
+    type: { type: String, enum: ['entire', 'custom'], required: true, default: 'custom' },
     fromAyah: { type: Number },
     toAyah: { type: Number },
     ayahCount: { type: Number, required: true },

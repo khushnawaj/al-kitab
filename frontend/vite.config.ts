@@ -16,12 +16,19 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
+      includeAssets: [
+        'favicon.svg',
+        'icons.svg',
+        'islamic-pattern.png',
+        'premium-bg.png',
+        'pwa-192x192.png',
+        'pwa-512x512.png'
+      ],
       manifest: {
         name: 'Al-Kitab — Quran & Dhikr Tracker',
         short_name: 'Al-Kitab',
         description: 'Track your daily Quran recitation, dhikr and Islamic practices. Your personal spiritual journal.',
-        theme_color: '#92400e',
+        theme_color: '#169b5c',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
@@ -52,6 +59,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // Ensure client-side SPA navigation routes fall back to index.html while strictly excluding API calls
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
@@ -59,26 +69,16 @@ export default defineConfig({
             options: {
               cacheName: 'google-fonts',
               expiration: {
-                maxEntries: 10,
+                maxEntries: 20,
                 maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
               }
             }
-          },
-          {
-            urlPattern: /^\/api\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-              },
-              networkTimeoutSeconds: 5
-            }
           }
+          // Note: Authenticated API endpoints (/api/*) are intentionally NOT cached by Workbox
+          // to prevent private user data leakage across sessions or offline exposure.
+          // Offline mutative actions and reading are safely handled by the app's useSync hook.
         ]
       }
     })
   ]
 });
-

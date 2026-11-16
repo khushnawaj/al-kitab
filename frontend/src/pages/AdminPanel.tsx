@@ -21,9 +21,40 @@ export const AdminPanel: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = React.useState('');
+  const isAdmin = user?.role === 'admin';
 
-  // Protect client view
-  if (!user || user.role !== 'admin') {
+  // React hooks must execute unconditionally on every render
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['adminUsers'],
+    queryFn: adminApi.getAllUsers,
+    enabled: isAdmin,
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: 'user' | 'admin' }) =>
+      adminApi.updateUserRole(id, role),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      toast.success(data.message || 'User role updated successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to update role');
+    }
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteUser(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      toast.success(data.message || 'User deleted successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to delete user');
+    }
+  });
+
+  // Guard view for non-admin users
+  if (!isAdmin) {
     return (
       <div className="max-w-md mx-auto py-12 px-4 text-center space-y-6">
         <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
@@ -46,44 +77,11 @@ export const AdminPanel: React.FC = () => {
     );
   }
 
-  // Queries
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ['adminUsers'],
-    queryFn: adminApi.getAllUsers
-  });
-
-  // Mutations
-  const updateRoleMutation = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: 'user' | 'admin' }) =>
-      adminApi.updateUserRole(id, role),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
-      toast.success(data.message || 'User role updated successfully');
-    },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Failed to update role');
-    }
-  });
-
-  // Wait, let's look at what method is on adminApi. It's updateUserRole, not updateRole. Let's fix that!
-  // It is indeed adminApi.updateUserRole. Let's use updateUserRole instead.
-
-  const deleteUserMutation = useMutation({
-    mutationFn: (id: string) => adminApi.deleteUser(id),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
-      toast.success(data.message || 'User deleted successfully');
-    },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Failed to delete user');
-    }
-  });
-
   const handleRoleToggle = (targetUser: any) => {
     const newRole = targetUser.role === 'admin' ? 'user' : 'admin';
     
     // Prevent self-demotion to avoid losing admin lock
-    if (targetUser._id === user.id) {
+    if (targetUser._id === user?.id) {
       toast.error('You cannot demote yourself from administrator status.');
       return;
     }
@@ -92,7 +90,7 @@ export const AdminPanel: React.FC = () => {
   };
 
   const handleDeleteUser = (targetUser: any) => {
-    if (targetUser._id === user.id) {
+    if (targetUser._id === user?.id) {
       toast.error('You cannot delete your own admin account from here.');
       return;
     }
@@ -233,7 +231,7 @@ export const AdminPanel: React.FC = () => {
                   {/* Toggle Admin Status */}
                   <button
                     onClick={() => handleRoleToggle(targetUser)}
-                    disabled={targetUser._id === user.id || updateRoleMutation.isPending}
+                    disabled={targetUser._id === user?.id || updateRoleMutation.isPending}
                     className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-40"
                     title={targetUser.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
                   >
@@ -243,7 +241,7 @@ export const AdminPanel: React.FC = () => {
                   {/* Delete user */}
                   <button
                     onClick={() => handleDeleteUser(targetUser)}
-                    disabled={targetUser._id === user.id || deleteUserMutation.isPending}
+                    disabled={targetUser._id === user?.id || deleteUserMutation.isPending}
                     className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all cursor-pointer disabled:opacity-40"
                     title="Delete User Account"
                   >
